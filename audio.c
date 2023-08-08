@@ -29,7 +29,6 @@ void data_callback(ma_device *device, void *pOutput, const void *pInput,
 
 static void decode(AVCodecContext *context, AVPacket *packet, AVFrame *frame,
                    AVAudioFifo *fifo) {
-  int i, ch;
   int ret, data_size;
   SwrContext *resampler;
   resampler = swr_alloc_set_opts(NULL, AV_CH_LAYOUT_STEREO, AV_SAMPLE_FMT_FLT,
@@ -79,7 +78,6 @@ int main() {
   AVPacket *packet;
   AVFrame *decoded_frame = NULL;
   AVCodecParserContext *parser = NULL;
-  bool first_frame = true;
   int ret;
 
   codec = avcodec_find_decoder(AV_CODEC_ID_MP3);
