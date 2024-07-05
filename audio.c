@@ -30,10 +30,14 @@ void data_callback(ma_device *device, void *pOutput, const void *pInput,
 static void decode(AVCodecContext *context, AVPacket *packet, AVFrame *frame,
                    AVAudioFifo *fifo) {
   int ret, data_size;
-  SwrContext *resampler;
-  resampler = swr_alloc_set_opts(NULL, AV_CH_LAYOUT_STEREO, AV_SAMPLE_FMT_FLT,
-                                 44100, AV_CH_LAYOUT_STEREO, AV_SAMPLE_FMT_FLT,
+  SwrContext *resampler = NULL;
+  ret = swr_alloc_set_opts2(&resampler, &context->ch_layout, AV_SAMPLE_FMT_FLT,
+                                 44100, &context->ch_layout, AV_SAMPLE_FMT_FLT,
                                  44100, 0, NULL);
+  if (ret != 0) {
+    fprintf(stderr, "could not allocate and set resampler\n\n");
+    return;
+  }
 
   ret = avcodec_send_packet(context, packet);
   if (ret < 0) {
@@ -50,6 +54,7 @@ static void decode(AVCodecContext *context, AVPacket *packet, AVFrame *frame,
       exit(1);
     }
     data_size = av_get_bytes_per_sample(context->sample_fmt);
+    //printf("%i bytes per sample. ", data_size);
     if (data_size < 0) {
       fprintf(stderr, "could not calculate data size");
       exit(1);
@@ -57,20 +62,19 @@ static void decode(AVCodecContext *context, AVPacket *packet, AVFrame *frame,
 
     AVFrame *resampled = av_frame_alloc();
     resampled->sample_rate = frame->sample_rate;
-    resampled->channel_layout = frame->channel_layout;
-    resampled->channels = frame->channels;
+    resampled->ch_layout = frame->ch_layout;
     resampled->format = AV_SAMPLE_FMT_FLT;
 
     ret = swr_convert_frame(resampler, resampled, frame);
 
-    av_audio_fifo_write(fifo, (void **)resampled->data, frame->nb_samples);
-    printf("Inserted %i into fifo\n", frame->nb_samples);
+    int num_samples = av_audio_fifo_write(fifo, (void **)resampled->data, frame->nb_samples);
+    printf("Frame contained %i samples and we inserted %i samples into fifo\n", frame->nb_samples, num_samples);
     av_frame_unref(frame);
   }
 }
 
 int main() {
-  AVCodec *codec = NULL;
+  const AVCodec *codec = NULL;
   AVCodecContext *context = NULL;
   int len = 0;
   FILE *f = NULL;
