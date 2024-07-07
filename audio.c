@@ -144,6 +144,7 @@ int main() {
       memmove(inbuf, data, data_size);
       data = inbuf;
       len = fread(data + data_size, 1, AUDIO_INBUF_SIZE - data_size, f);
+      data_size += len;
       if (len < 0) {
         data_size += len;
       }
